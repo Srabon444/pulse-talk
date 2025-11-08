@@ -42,6 +42,9 @@ model Comment {
   replies Comment[] @relation("CommentReplies")
   likes   Like[]
 
+  @@index([parentId, createdAt]) // For nested replies ordering
+  @@index([createdAt]) // For general time-based sorting
+  @@index([authorId]) // For author-based queries
   @@map("comments")
 }
 
@@ -58,5 +61,7 @@ model Like {
 
   // Ensuring one vote per user per comment
   @@unique([userId, commentId])
+  @@index([commentId, isLike]) // For vote counting queries
+  @@index([userId]) // For user vote queries
   @@map("likes")
 }

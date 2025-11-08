@@ -47,9 +47,6 @@ export const getComments = async (queryParams, userId = null) => {
       }
     }
 
-    // Build the orderBy object based on sortBy parameter
-    const orderBy = sortBy === 'oldest' ? {createdAt: 'asc'} : {createdAt: 'desc'};
-
     // Get total count for pagination
     const totalComments = await prisma.comment.count({
       where: {
@@ -57,47 +54,121 @@ export const getComments = async (queryParams, userId = null) => {
       }
     });
 
-    // Get comments with nested replies
-    const comments = await prisma.comment.findMany({
-      where: {
-        parentId: null // Only get top-level comments
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            username: true,
-            email: true
-          }
-        },
-        replies: {
+    let comments;
+
+    // Handle different sorting options
+    if (sortBy === 'likes' || sortBy === 'dislikes') {
+      const isLikeValue = sortBy === 'likes';
+
+      // Get counts per comment where isLike matches (true for likes, false for dislikes)
+      const grouped = await prisma.like.groupBy({
+        by: ['commentId'],
+        where: {isLike: isLikeValue},
+        _count: {
+          commentId: true
+        }
+      });
+
+      // Sort the groups by count desc
+      grouped.sort((a, b) => b._count.commentId - a._count.commentId);
+
+      // Extract ordered commentIds
+      const orderedLikedIds = grouped.map(g => g.commentId);
+
+      // For pagination: compute slice of IDs that correspond to the requested page
+      const start = skip;
+      const end = skip + limit;
+
+      // Prepare list of commentIds to fetch for this page
+      let pageCommentIds = orderedLikedIds.slice(start, end);
+
+      // If not enough (because many comments have zero matching votes), fill with other top-level comments TODO: Need to simplify, try before final submission
+      if (pageCommentIds.length < limit) {
+        // How many more we need
+        const needed = limit - pageCommentIds.length;
+
+        // Fetch other top-level comment IDs excluding the ones we already have, ordered by createdAt desc
+        const otherComments = await prisma.comment.findMany({
+          where: {
+            parentId: null,
+            id: {notIn: orderedLikedIds}
+          },
+          orderBy: {createdAt: 'desc'},
+          select: {id: true},
+          take: needed,
+          skip: 0
+        });
+
+        pageCommentIds = pageCommentIds.concat(otherComments.map(c => c.id));
+      }
+
+      // Fetch complete comment data preserving order
+      if (pageCommentIds.length > 0) {
+        const fetched = await prisma.comment.findMany({
+          where: {id: {in: pageCommentIds}, parentId: null},
           include: {
-            author: {
-              select: {
-                id: true,
-                username: true,
-                email: true
-              }
+            author: {select: {id: true, username: true, email: true}},
+            replies: {
+              include: {
+                author: {select: {id: true, username: true, email: true}},
+                _count: {select: {likes: true}}
+              },
+              orderBy: {createdAt: 'asc'}
             },
-            _count: {
-              select: {
-                likes: true
-              }
+            _count: {select: {likes: true, replies: true}}
+          }
+        });
+
+        // Preserve ordering from pageCommentIds
+        comments = pageCommentIds.map(id => fetched.find(f => f.id === id)).filter(Boolean);
+      } else {
+        comments = [];
+      }
+    } else {
+      // Handle createdAt sorting (newest/oldest)
+      const orderBy = sortBy === 'oldest' ? {createdAt: 'asc'} : {createdAt: 'desc'};
+
+      comments = await prisma.comment.findMany({
+        where: {
+          parentId: null // Only get top-level comments
+        },
+        include: {
+          author: {
+            select: {
+              id: true,
+              username: true,
+              email: true
             }
           },
-          orderBy: {createdAt: 'asc'}
-        },
-        _count: {
-          select: {
-            likes: true,
-            replies: true
+          replies: {
+            include: {
+              author: {
+                select: {
+                  id: true,
+                  username: true,
+                  email: true
+                }
+              },
+              _count: {
+                select: {
+                  likes: true
+                }
+              }
+            },
+            orderBy: {createdAt: 'asc'}
+          },
+          _count: {
+            select: {
+              likes: true,
+              replies: true
+            }
           }
-        }
-      },
-      orderBy,
-      skip,
-      take: limit
-    });
+        },
+        orderBy,
+        skip,
+        take: limit
+      });
+    }
 
     // Enhance comments with vote data
     const enhancedComments = await enhanceCommentsWithVotes(comments, userId);

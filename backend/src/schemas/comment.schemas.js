@@ -21,7 +21,7 @@ export const updateCommentSchema = z.object({
 export const getCommentsQuerySchema = z.object({
   page: z.string().optional().transform(val => val ? parseInt(val) : 1),
   limit: z.string().optional().transform(val => val ? parseInt(val) : 10),
-  sortBy: z.enum(['newest', 'oldest']).optional().default('newest')
+  sortBy: z.enum(['newest', 'oldest', 'likes', 'dislikes']).optional().default('newest')
 });
 
 // Comment ID parameter schema
