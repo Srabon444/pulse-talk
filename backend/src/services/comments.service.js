@@ -2,7 +2,29 @@ import {prisma} from '../config/prisma.connection.js';
 import {cacheService, cacheKeys} from './cache.service.js';
 import logger from '../config/logger.js';
 
-// Helper function to enhance comments with vote data TODO: make it simpler and put in separate file later
+// Helper function to build nested replies with depth control
+const buildNestedReplies = (depth = 3) => {
+  if (depth <= 0) {
+    return {
+      include: {
+        author: {select: {id: true, username: true, email: true}},
+        _count: {select: {likes: true, replies: true}}
+      },
+      orderBy: {createdAt: 'asc'}
+    };
+  }
+
+  return {
+    include: {
+      author: {select: {id: true, username: true, email: true}},
+      _count: {select: {likes: true, replies: true}},
+      replies: buildNestedReplies(depth - 1)
+    },
+    orderBy: {createdAt: 'asc'}
+  };
+};
+
+// Helper function to enhance comments with vote data
 const enhanceCommentsWithVotes = async (comments, userId = null) => {
   if (!comments || comments.length === 0) return comments;
 
@@ -29,7 +51,7 @@ const enhanceCommentsWithVotes = async (comments, userId = null) => {
 
 export const getComments = async (queryParams, userId = null) => {
   try {
-    const {page = 1, limit = 10, sortBy = 'newest'} = queryParams;
+    const {page = 1, limit = 10, sortBy = 'newest', depth = 3} = queryParams;
     const skip = (page - 1) * limit;
 
     // For authenticated users, we don't cache to ensure real-time vote status
@@ -108,13 +130,7 @@ export const getComments = async (queryParams, userId = null) => {
           where: {id: {in: pageCommentIds}, parentId: null},
           include: {
             author: {select: {id: true, username: true, email: true}},
-            replies: {
-              include: {
-                author: {select: {id: true, username: true, email: true}},
-                _count: {select: {likes: true}}
-              },
-              orderBy: {createdAt: 'asc'}
-            },
+            replies: buildNestedReplies(depth - 1),
             _count: {select: {likes: true, replies: true}}
           }
         });
@@ -133,36 +149,9 @@ export const getComments = async (queryParams, userId = null) => {
           parentId: null // Only get top-level comments
         },
         include: {
-          author: {
-            select: {
-              id: true,
-              username: true,
-              email: true
-            }
-          },
-          replies: {
-            include: {
-              author: {
-                select: {
-                  id: true,
-                  username: true,
-                  email: true
-                }
-              },
-              _count: {
-                select: {
-                  likes: true
-                }
-              }
-            },
-            orderBy: {createdAt: 'asc'}
-          },
-          _count: {
-            select: {
-              likes: true,
-              replies: true
-            }
-          }
+          author: {select: {id: true, username: true, email: true}},
+          replies: buildNestedReplies(depth - 1),
+          _count: {select: {likes: true, replies: true}}
         },
         orderBy,
         skip,
@@ -173,14 +162,22 @@ export const getComments = async (queryParams, userId = null) => {
     // Enhance comments with vote data
     const enhancedComments = await enhanceCommentsWithVotes(comments, userId);
 
+    const totalPages = Math.ceil(totalComments / limit);
+
     const result = {
       comments: enhancedComments,
       pagination: {
         currentPage: page,
-        totalPages: Math.ceil(totalComments / limit),
+        totalPages,
         totalComments,
-        hasNext: page < Math.ceil(totalComments / limit),
-        hasPrev: page > 1
+        itemsPerPage: limit,
+        itemsOnPage: enhancedComments.length,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+        nextPage: page < totalPages ? page + 1 : null,
+        prevPage: page > 1 ? page - 1 : null,
+        firstPage: 1,
+        lastPage: totalPages
       }
     };
 
@@ -269,7 +266,7 @@ export const createComment = async (commentData, userId) => {
   }
 };
 
-export const getCommentById = async (commentId, userId = null) => {
+export const getCommentById = async (commentId, userId = null, depth = 3) => {
   try {
     // For authenticated users, we don't cache to ensure real-time vote status
     const shouldCache = !userId;
@@ -289,36 +286,9 @@ export const getCommentById = async (commentId, userId = null) => {
     const comment = await prisma.comment.findUnique({
       where: {id: commentId},
       include: {
-        author: {
-          select: {
-            id: true,
-            username: true,
-            email: true
-          }
-        },
-        replies: {
-          include: {
-            author: {
-              select: {
-                id: true,
-                username: true,
-                email: true
-              }
-            },
-            _count: {
-              select: {
-                likes: true
-              }
-            }
-          },
-          orderBy: {createdAt: 'asc'}
-        },
-        _count: {
-          select: {
-            likes: true,
-            replies: true
-          }
-        }
+        author: {select: {id: true, username: true, email: true}},
+        replies: buildNestedReplies(depth - 1),
+        _count: {select: {likes: true, replies: true}}
       }
     });
 

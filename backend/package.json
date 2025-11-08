@@ -27,6 +27,7 @@
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
     "http-status": "^2.1.0",
+    "isomorphic-dompurify": "^2.31.0",
     "jsonwebtoken": "^9.0.2",
     "pino": "^10.1.0",
     "pino-pretty": "^13.1.2",

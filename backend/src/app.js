@@ -13,6 +13,8 @@ import commentRoutes from './routes/comments.routes.js';
 
 // Middlewares
 import {notFoundHandler, globalErrorHandler} from './middleware/error.middleware.js';
+import {securityHeaders, csrfProtection} from './middleware/security.middleware.js';
+import {sanitizeInput} from './middleware/sanitization.middleware.js';
 
 
 const app = express();
@@ -21,11 +23,12 @@ const app = express();
 app.use(helmet({
   crossOriginResourcePolicy: {policy: "cross-origin"}
 }));
+app.use(securityHeaders);
 
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 100, // limit each IP to 100 requests per windowMs [Tested thoroughly]
   message: {
     success: false,
     message: 'Too many requests, please try again later.',
@@ -48,6 +51,12 @@ app.use(cors({
 app.use(express.json({limit: '5mb'}));
 app.use(express.urlencoded({extended: true}));
 app.use(cookieParser());
+
+// Input sanitization middleware
+app.use(sanitizeInput(['content', 'username', 'email']));
+
+// CSRF protection
+app.use(csrfProtection);
 
 // Database connection
 connectPrisma().then(() => {

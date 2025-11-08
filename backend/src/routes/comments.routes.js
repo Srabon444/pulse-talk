@@ -6,7 +6,8 @@ import {
   updateCommentContent,
   deleteCommentById,
   likeComment,
-  dislikeComment
+  dislikeComment,
+  replyToComment
 } from '../controllers/comments.controller.js';
 import {authenticateToken, optionalAuth} from '../middleware/auth.middleware.js';
 import {checkCommentOwnership} from '../middleware/ownership.middleware.js';
@@ -27,5 +28,8 @@ router.delete('/:id', authenticateToken, checkCommentOwnership, deleteCommentByI
 // Like/Dislike routes (authenticated users only)
 router.post('/:id/like', authenticateToken, likeComment);
 router.post('/:id/dislike', authenticateToken, dislikeComment);
+
+// Reply route (authenticated users only)
+router.post('/:id/reply', authenticateToken, replyToComment);
 
 export default router;

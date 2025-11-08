@@ -1,5 +1,18 @@
-import {getComments, createComment, getCommentById, updateComment, deleteComment, toggleLike} from '../services/comments.service.js';
-import {createCommentSchema, getCommentsQuerySchema, commentIdSchema, updateCommentSchema, likeCommentParamsSchema} from '../schemas/comment.schemas.js';
+import {
+  getComments,
+  createComment,
+  getCommentById,
+  updateComment,
+  deleteComment,
+  toggleLike
+} from '../services/comments.service.js';
+import {
+  createCommentSchema,
+  getCommentsQuerySchema,
+  commentIdSchema,
+  updateCommentSchema,
+  likeCommentParamsSchema
+} from '../schemas/comment.schemas.js';
 import logger from '../config/logger.js';
 
 export const getAllComments = async (req, res) => {
@@ -106,7 +119,7 @@ export const updateCommentContent = async (req, res) => {
       });
     }
 
-    const { id } = req.params;
+    const {id} = req.params;
     const result = await updateComment(id, validationResult.data);
 
     if (result.success) {
@@ -126,7 +139,7 @@ export const updateCommentContent = async (req, res) => {
 
 export const deleteCommentById = async (req, res) => {
   try {
-    const { id } = req.params;
+    const {id} = req.params;
     const result = await deleteComment(id);
 
     if (result.success) {
@@ -156,7 +169,7 @@ export const likeComment = async (req, res) => {
       });
     }
 
-    const { id } = validationResult.data;
+    const {id} = validationResult.data;
     const userId = req.user.userId;
 
     const result = await toggleLike(id, userId, true); // true = like
@@ -188,7 +201,7 @@ export const dislikeComment = async (req, res) => {
       });
     }
 
-    const { id } = validationResult.data;
+    const {id} = validationResult.data;
     const userId = req.user.userId;
 
     const result = await toggleLike(id, userId, false); // false = dislike
@@ -201,6 +214,53 @@ export const dislikeComment = async (req, res) => {
 
   } catch (error) {
     logger.error(`Dislike comment controller error: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const replyToComment = async (req, res) => {
+  try {
+    // Validate comment ID parameter
+    const idValidation = commentIdSchema.safeParse(req.params);
+    if (!idValidation.success) {
+      return res.status(400).json({
+        success: false,
+        errors: idValidation.error.errors
+      });
+    }
+
+    // Validate reply content
+    const contentValidation = createCommentSchema.safeParse(req.body);
+    if (!contentValidation.success) {
+      return res.status(400).json({
+        success: false,
+        errors: contentValidation.error.errors
+      });
+    }
+
+    const {id} = idValidation.data;
+    const {content} = contentValidation.data;
+    const userId = req.user.userId;
+
+    // Create reply with parentId set to the comment being replied to
+    const replyData = {
+      content,
+      parentId: id
+    };
+
+    const result = await createComment(replyData, userId);
+
+    if (result.success) {
+      res.status(201).json(result);
+    } else {
+      res.status(400).json(result);
+    }
+
+  } catch (error) {
+    logger.error(`Reply to comment controller error: ${error.message}`);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
