@@ -1,5 +1,5 @@
-import {getComments, createComment, getCommentById, updateComment, deleteComment} from '../services/comments.service.js';
-import {createCommentSchema, getCommentsQuerySchema, commentIdSchema, updateCommentSchema} from '../schemas/comment.schemas.js';
+import {getComments, createComment, getCommentById, updateComment, deleteComment, toggleLike} from '../services/comments.service.js';
+import {createCommentSchema, getCommentsQuerySchema, commentIdSchema, updateCommentSchema, likeCommentParamsSchema} from '../schemas/comment.schemas.js';
 import logger from '../config/logger.js';
 
 export const getAllComments = async (req, res) => {
@@ -14,7 +14,9 @@ export const getAllComments = async (req, res) => {
       });
     }
 
-    const result = await getComments(validationResult.data);
+    // Pass userId if user is authenticated (from optionalAuth middleware)
+    const userId = req.user?.userId || null;
+    const result = await getComments(validationResult.data, userId);
 
     if (result.success) {
       res.status(200).json(result);
@@ -73,7 +75,9 @@ export const getCommentDetails = async (req, res) => {
       });
     }
 
-    const result = await getCommentById(validationResult.data.id);
+    // Pass userId if user is authenticated (from optionalAuth middleware)
+    const userId = req.user?.userId || null;
+    const result = await getCommentById(validationResult.data.id, userId);
 
     if (result.success) {
       res.status(200).json(result);
@@ -133,6 +137,70 @@ export const deleteCommentById = async (req, res) => {
 
   } catch (error) {
     logger.error(`Delete comment controller error: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const likeComment = async (req, res) => {
+  try {
+    // Validate comment ID parameter
+    const validationResult = likeCommentParamsSchema.safeParse(req.params);
+
+    if (!validationResult.success) {
+      return res.status(400).json({
+        success: false,
+        errors: validationResult.error.errors
+      });
+    }
+
+    const { id } = validationResult.data;
+    const userId = req.user.userId;
+
+    const result = await toggleLike(id, userId, true); // true = like
+
+    if (result.success) {
+      res.status(200).json(result);
+    } else {
+      res.status(404).json(result);
+    }
+
+  } catch (error) {
+    logger.error(`Like comment controller error: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const dislikeComment = async (req, res) => {
+  try {
+    // Validate comment ID parameter
+    const validationResult = likeCommentParamsSchema.safeParse(req.params);
+
+    if (!validationResult.success) {
+      return res.status(400).json({
+        success: false,
+        errors: validationResult.error.errors
+      });
+    }
+
+    const { id } = validationResult.data;
+    const userId = req.user.userId;
+
+    const result = await toggleLike(id, userId, false); // false = dislike
+
+    if (result.success) {
+      res.status(200).json(result);
+    } else {
+      res.status(404).json(result);
+    }
+
+  } catch (error) {
+    logger.error(`Dislike comment controller error: ${error.message}`);
     res.status(500).json({
       success: false,
       message: 'Internal server error'

@@ -28,3 +28,13 @@ export const getCommentsQuerySchema = z.object({
 export const commentIdSchema = z.object({
   id: z.string().min(1, 'Comment ID is required')
 });
+
+// Like/Dislike action schema
+export const likeActionSchema = z.object({
+  action: z.enum(['like', 'dislike', 'remove'], 'Action must be like, dislike, or remove')
+});
+
+// Like comment parameter schema (for route params)
+export const likeCommentParamsSchema = z.object({
+  id: z.string().min(1, 'Comment ID is required')
+});

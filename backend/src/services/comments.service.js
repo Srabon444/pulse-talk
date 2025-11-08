@@ -2,21 +2,49 @@ import {prisma} from '../config/prisma.connection.js';
 import {cacheService, cacheKeys} from './cache.service.js';
 import logger from '../config/logger.js';
 
-export const getComments = async (queryParams) => {
+// Helper function to enhance comments with vote data TODO: make it simpler and put in separate file later
+const enhanceCommentsWithVotes = async (comments, userId = null) => {
+  if (!comments || comments.length === 0) return comments;
+
+  const commentsArray = Array.isArray(comments) ? comments : [comments];
+
+  for (let comment of commentsArray) {
+    // Get vote counts
+    const voteCounts = await getVoteCounts(comment.id);
+    comment.voteCounts = voteCounts;
+
+    // Get user's vote status if user is authenticated
+    if (userId) {
+      comment.userVote = await getUserVoteStatus(comment.id, userId);
+    }
+
+    // Process replies recursively
+    if (comment.replies && comment.replies.length > 0) {
+      comment.replies = await enhanceCommentsWithVotes(comment.replies, userId);
+    }
+  }
+
+  return Array.isArray(comments) ? commentsArray : commentsArray[0];
+};
+
+export const getComments = async (queryParams, userId = null) => {
   try {
     const {page = 1, limit = 10, sortBy = 'newest'} = queryParams;
     const skip = (page - 1) * limit;
 
-    // Check cache first
+    // For authenticated users, we don't cache to ensure real-time vote status
+    const shouldCache = !userId;
     const cacheKey = cacheKeys.commentsList(page, limit, sortBy);
-    const cachedComments = await cacheService.get(cacheKey);
 
-    if (cachedComments) {
-      logger.info(`Comments retrieved from cache for page ${page}`);
-      return {
-        success: true,
-        data: cachedComments
-      };
+    if (shouldCache) {
+      const cachedComments = await cacheService.get(cacheKey);
+      if (cachedComments) {
+        logger.info(`Comments retrieved from cache for page ${page}`);
+        return {
+          success: true,
+          data: cachedComments
+        };
+      }
     }
 
     // Build the orderBy object based on sortBy parameter
@@ -71,8 +99,11 @@ export const getComments = async (queryParams) => {
       take: limit
     });
 
+    // Enhance comments with vote data
+    const enhancedComments = await enhanceCommentsWithVotes(comments, userId);
+
     const result = {
-      comments,
+      comments: enhancedComments,
       pagination: {
         currentPage: page,
         totalPages: Math.ceil(totalComments / limit),
@@ -82,8 +113,10 @@ export const getComments = async (queryParams) => {
       }
     };
 
-    // Cache the result for 5 minutes
-    await cacheService.set(cacheKey, result, 300);
+    // Cache the result for 5 minutes (only for non-authenticated requests)
+    if (shouldCache) {
+      await cacheService.set(cacheKey, result, 300);
+    }
 
     logger.info(`Retrieved ${comments.length} comments for page ${page}`);
     return {
@@ -165,18 +198,21 @@ export const createComment = async (commentData, userId) => {
   }
 };
 
-export const getCommentById = async (commentId) => {
+export const getCommentById = async (commentId, userId = null) => {
   try {
-    // Check cache first
+    // For authenticated users, we don't cache to ensure real-time vote status
+    const shouldCache = !userId;
     const cacheKey = cacheKeys.commentDetails(commentId);
-    const cachedComment = await cacheService.get(cacheKey);
 
-    if (cachedComment) {
-      logger.info(`Comment details retrieved from cache for ID: ${commentId}`);
-      return {
-        success: true,
-        data: cachedComment
-      };
+    if (shouldCache) {
+      const cachedComment = await cacheService.get(cacheKey);
+      if (cachedComment) {
+        logger.info(`Comment details retrieved from cache for ID: ${commentId}`);
+        return {
+          success: true,
+          data: cachedComment
+        };
+      }
     }
 
     const comment = await prisma.comment.findUnique({
@@ -222,12 +258,17 @@ export const getCommentById = async (commentId) => {
       };
     }
 
-    // Cache the result for 10 minutes
-    await cacheService.set(cacheKey, comment, 600);
+    // Enhance comment with vote data
+    const enhancedComment = await enhanceCommentsWithVotes(comment, userId);
+
+    // Cache the result for 10 minutes (only for non-authenticated requests)
+    if (shouldCache) {
+      await cacheService.set(cacheKey, enhancedComment, 600);
+    }
 
     return {
       success: true,
-      data: comment
+      data: enhancedComment
     };
 
   } catch (error) {
@@ -358,5 +399,166 @@ export const deleteComment = async (commentId) => {
       success: false,
       message: 'Failed to delete comment'
     };
+  }
+};
+
+export const toggleLike = async (commentId, userId, isLike) => {
+  try {
+    // Check if comment exists
+    const comment = await prisma.comment.findUnique({
+      where: {id: commentId}
+    });
+
+    if (!comment) {
+      return {
+        success: false,
+        message: 'Comment not found'
+      };
+    }
+
+    // Check if user already has a vote on this comment
+    const existingLike = await prisma.like.findUnique({
+      where: {
+        userId_commentId: {
+          userId,
+          commentId
+        }
+      }
+    });
+
+    let result;
+
+    if (existingLike) {
+      if (existingLike.isLike === isLike) {
+        // Same action - remove the vote
+        await prisma.like.delete({
+          where: {id: existingLike.id}
+        });
+
+        result = {
+          action: 'removed',
+          previousVote: isLike ? 'like' : 'dislike'
+        };
+        logger.info(`Vote removed from comment ${commentId} by user ${userId}`);
+      } else {
+        // Different action - update the vote
+        const updatedLike = await prisma.like.update({
+          where: {id: existingLike.id},
+          data: {isLike}
+        });
+
+        result = {
+          action: 'updated',
+          newVote: isLike ? 'like' : 'dislike',
+          previousVote: existingLike.isLike ? 'like' : 'dislike'
+        };
+        logger.info(`Vote updated on comment ${commentId} by user ${userId}: ${isLike ? 'like' : 'dislike'}`);
+      }
+    } else {
+      // No existing vote - create new
+      const newLike = await prisma.like.create({
+        data: {
+          userId,
+          commentId,
+          isLike
+        }
+      });
+
+      result = {
+        action: 'created',
+        newVote: isLike ? 'like' : 'dislike'
+      };
+      logger.info(`New vote created on comment ${commentId} by user ${userId}: ${isLike ? 'like' : 'dislike'}`);
+    }
+
+    // Get updated vote counts
+    const voteCounts = await getVoteCounts(commentId);
+
+    // Clear relevant caches
+    await cacheService.del(cacheKeys.commentDetails(commentId));
+    await cacheService.delPattern('comments:list:*');
+
+    return {
+      success: true,
+      data: {
+        ...result,
+        voteCounts
+      },
+      message: 'Vote processed successfully'
+    };
+
+  } catch (error) {
+    logger.error(`Failed to process vote: ${error.message}`);
+    return {
+      success: false,
+      message: 'Failed to process vote'
+    };
+  }
+};
+
+export const getVoteCounts = async (commentId) => {
+  try {
+    const counts = await prisma.like.groupBy({
+      by: ['isLike'],
+      where: {commentId},
+      _count: {
+        isLike: true
+      }
+    });
+
+    let likes = 0;
+    let dislikes = 0;
+
+    counts.forEach(count => {
+      if (count.isLike === true) {
+        likes = count._count.isLike;
+      } else if (count.isLike === false) {
+        dislikes = count._count.isLike;
+      }
+    });
+
+    return {
+      likes,
+      dislikes,
+      total: likes + dislikes
+    };
+
+  } catch (error) {
+    logger.error(`Failed to get vote counts for comment ${commentId}: ${error.message}`);
+    return {
+      likes: 0,
+      dislikes: 0,
+      total: 0
+    };
+  }
+};
+
+export const getUserVoteStatus = async (commentId, userId) => {
+  try {
+    if (!userId) {
+      return null;
+    }
+
+    const userVote = await prisma.like.findUnique({
+      where: {
+        userId_commentId: {
+          userId,
+          commentId
+        }
+      },
+      select: {
+        isLike: true
+      }
+    });
+
+    if (!userVote) {
+      return null;
+    }
+
+    return userVote.isLike ? 'like' : 'dislike';
+
+  } catch (error) {
+    logger.error(`Failed to get user vote status: ${error.message}`);
+    return null;
   }
 };

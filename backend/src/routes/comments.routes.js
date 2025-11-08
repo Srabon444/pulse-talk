@@ -4,7 +4,9 @@ import {
   createNewComment,
   getCommentDetails,
   updateCommentContent,
-  deleteCommentById
+  deleteCommentById,
+  likeComment,
+  dislikeComment
 } from '../controllers/comments.controller.js';
 import {authenticateToken, optionalAuth} from '../middleware/auth.middleware.js';
 import {checkCommentOwnership} from '../middleware/ownership.middleware.js';
@@ -21,5 +23,9 @@ router.post('/', authenticateToken, createNewComment);
 // Owner-only routes (must be authenticated and own the comment)
 router.put('/:id', authenticateToken, checkCommentOwnership, updateCommentContent);
 router.delete('/:id', authenticateToken, checkCommentOwnership, deleteCommentById);
+
+// Like/Dislike routes (authenticated users only)
+router.post('/:id/like', authenticateToken, likeComment);
+router.post('/:id/dislike', authenticateToken, dislikeComment);
 
 export default router;
