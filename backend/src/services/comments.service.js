@@ -238,3 +238,125 @@ export const getCommentById = async (commentId) => {
     };
   }
 };
+
+export const updateComment = async (commentId, updateData) => {
+  try {
+    const updatedComment = await prisma.comment.update({
+      where: {id: commentId},
+      data: updateData,
+      include: {
+        author: {
+          select: {
+            id: true,
+            username: true,
+            email: true
+          }
+        },
+        _count: {
+          select: {
+            likes: true,
+            replies: true
+          }
+        }
+      }
+    });
+
+    // Clear cache for this comment and related lists
+    await cacheService.del(cacheKeys.commentDetails(commentId));
+    await cacheService.delPattern('comments:list:*');
+
+    if (updatedComment.parentId) {
+      await cacheService.del(cacheKeys.commentReplies(updatedComment.parentId));
+    }
+
+    logger.info(`Comment updated successfully: ${commentId}`);
+    return {
+      success: true,
+      data: updatedComment,
+      message: 'Comment updated successfully'
+    };
+  } catch (error) {
+    logger.error(`Failed to update comment: ${error.message}`);
+    return {
+      success: false,
+      message: 'Failed to update comment'
+    };
+  }
+};
+
+export const deleteComment = async (commentId) => {
+  try {
+    // First check if comment has replies
+    const comment = await prisma.comment.findUnique({
+      where: {id: commentId},
+      include: {
+        _count: {
+          select: {
+            replies: true
+          }
+        }
+      }
+    });
+
+    if (!comment) {
+      return {
+        success: false,
+        message: 'Comment not found'
+      };
+    }
+
+    let result;
+    // If comment has replies, mark as deleted instead of hard delete
+    if (comment._count.replies > 0) {
+      result = await prisma.comment.update({
+        where: {id: commentId},
+        data: {
+          content: '[deleted]'
+        },
+        include: {
+          author: {
+            select: {
+              id: true,
+              username: true,
+              email: true
+            }
+          },
+          _count: {
+            select: {
+              likes: true,
+              replies: true
+            }
+          }
+        }
+      });
+      logger.info(`Comment soft deleted (has replies): ${commentId}`);
+    } else {
+      // Hard delete if no replies
+      await prisma.comment.delete({
+        where: {id: commentId}
+      });
+      result = {id: commentId, deleted: true};
+      logger.info(`Comment hard deleted: ${commentId}`);
+    }
+
+    // Clear cache
+    await cacheService.del(cacheKeys.commentDetails(commentId));
+    await cacheService.delPattern('comments:list:*');
+
+    if (comment.parentId) {
+      await cacheService.del(cacheKeys.commentReplies(comment.parentId));
+    }
+
+    return {
+      success: true,
+      data: result,
+      message: 'Comment deleted successfully'
+    };
+  } catch (error) {
+    logger.error(`Failed to delete comment: ${error.message}`);
+    return {
+      success: false,
+      message: 'Failed to delete comment'
+    };
+  }
+};

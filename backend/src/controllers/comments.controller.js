@@ -1,5 +1,5 @@
-import {getComments, createComment, getCommentById} from '../services/comments.service.js';
-import {createCommentSchema, getCommentsQuerySchema, commentIdSchema} from '../schemas/comment.schemas.js';
+import {getComments, createComment, getCommentById, updateComment, deleteComment} from '../services/comments.service.js';
+import {createCommentSchema, getCommentsQuerySchema, commentIdSchema, updateCommentSchema} from '../schemas/comment.schemas.js';
 import logger from '../config/logger.js';
 
 export const getAllComments = async (req, res) => {
@@ -83,6 +83,56 @@ export const getCommentDetails = async (req, res) => {
 
   } catch (error) {
     logger.error(`Get comment details controller error: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const updateCommentContent = async (req, res) => {
+  try {
+    // Validate request body
+    const validationResult = updateCommentSchema.safeParse(req.body);
+
+    if (!validationResult.success) {
+      return res.status(400).json({
+        success: false,
+        errors: validationResult.error.errors
+      });
+    }
+
+    const { id } = req.params;
+    const result = await updateComment(id, validationResult.data);
+
+    if (result.success) {
+      res.status(200).json(result);
+    } else {
+      res.status(400).json(result);
+    }
+
+  } catch (error) {
+    logger.error(`Update comment controller error: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const deleteCommentById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await deleteComment(id);
+
+    if (result.success) {
+      res.status(200).json(result);
+    } else {
+      res.status(404).json(result);
+    }
+
+  } catch (error) {
+    logger.error(`Delete comment controller error: ${error.message}`);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
