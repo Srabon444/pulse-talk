@@ -3,11 +3,12 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import {connectPrisma} from './config/prisma.connection.js';
 import logger from './config/logger.js';
 
 // Routes
-
+import authRoutes from './routes/auth.routes.js';
 
 // Middlewares
 import {notFoundHandler, globalErrorHandler} from './middleware/error.middleware.js';
@@ -45,6 +46,7 @@ app.use(cors({
 // Body parsing middleware
 app.use(express.json({limit: '5mb'}));
 app.use(express.urlencoded({extended: true}));
+app.use(cookieParser());
 
 // Database connection
 connectPrisma().then(() => {
@@ -65,6 +67,7 @@ app.get('/health', (req, res) => {
 });
 
 // API routes
+app.use('/api/auth', authRoutes);
 
 
 // 404 for unmatched routes
