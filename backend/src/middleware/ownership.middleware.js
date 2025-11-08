@@ -7,7 +7,8 @@ import {prisma} from '../config/prisma.connection.js';
 const checkCommentOwnership = async (req, res, next) => {
   try {
     const {id} = req.params;
-    const userId = req.user.id;
+    // Token payload uses userId (refer auth.service.js)
+    const userId = req.user?.userId;
 
     // Check if comment exists and get the author
     const comment = await prisma.comment.findUnique({
@@ -18,15 +19,17 @@ const checkCommentOwnership = async (req, res, next) => {
     if (!comment) {
       logger.warn(`Comment not found: ${id}`);
       return res.status(404).json({
-        error: 'Comment not found'
+        success: false,
+        message: 'Comment not found'
       });
     }
 
     // Check if user owns the comment
-    if (comment.authorId !== userId) {
+    if (!userId || comment.authorId !== userId) {
       logger.warn(`User ${userId} attempted to access comment ${id} owned by ${comment.authorId}`);
       return res.status(403).json({
-        error: 'You can only modify your own comments'
+        success: false,
+        message: 'You can only modify your own comments'
       });
     }
 
@@ -36,7 +39,8 @@ const checkCommentOwnership = async (req, res, next) => {
   } catch (error) {
     logger.error(`Comment ownership check failed: ${error.message}`);
     return res.status(500).json({
-      error: 'Failed to verify comment ownership'
+      success: false,
+      message: 'Failed to verify comment ownership'
     });
   }
 };
