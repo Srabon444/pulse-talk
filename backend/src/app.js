@@ -9,6 +9,7 @@ import logger from './config/logger.js';
 
 // Routes
 import authRoutes from './routes/auth.routes.js';
+import commentRoutes from './routes/comments.routes.js';
 
 // Middlewares
 import {notFoundHandler, globalErrorHandler} from './middleware/error.middleware.js';
@@ -68,6 +69,7 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/comments', commentRoutes);
 
 
 // 404 for unmatched routes

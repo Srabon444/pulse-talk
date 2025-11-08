@@ -16,7 +16,6 @@
   "description": "",
   "dependencies": {
     "@arcjet/inspect": "^1.0.0-beta.14",
-    "@arcjet/node": "^1.0.0-beta.14",
     "@prisma/client": "^6.19.0",
     "@types/redis": "^4.0.10",
     "bcrypt": "^6.0.0",
