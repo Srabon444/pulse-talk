@@ -2,6 +2,8 @@
 
 A real-time comment system built with Node.js, Express, Socket.io, Prisma, and PostgreSQL.
 
+![Architecture Image](resources/images/pulse-talk-system-architecture.png)
+
 ## Installation & Setup
 
 ### Prerequisites
