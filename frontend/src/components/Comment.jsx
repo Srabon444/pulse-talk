@@ -17,7 +17,9 @@ const Comment = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
 
-  const isOwner = isAuthenticated && user?.id === comment.authorId;
+  const authorIdToCheck = comment.authorId || comment.author?.id;
+  const currentUserId = user?.user?.id || user?.id; // Handle nested user object
+  const isOwner = isAuthenticated && currentUserId === authorIdToCheck;
   const canNest = depth < maxDepth;
 
   const handleReplySubmit = async (e) => {

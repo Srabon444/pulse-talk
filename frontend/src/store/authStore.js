@@ -1,6 +1,7 @@
 import {create} from 'zustand';
+import socketService from '../services/socket';
 
-const useAuthStore = create((set) => ({
+const useAuthStore = create((set, get) => ({
   user: null,
   isAuthenticated: false,
   isLoading: false,
@@ -9,10 +10,16 @@ const useAuthStore = create((set) => ({
   initialize: () => {
     const user = localStorage.getItem('pulse-talk-user');
     if (user) {
+      const userData = JSON.parse(user);
       set({
-        user: JSON.parse(user),
+        user: userData,
         isAuthenticated: true
       });
+
+      // Connect to socket if user is authenticated and has token
+      if (userData.token) {
+        socketService.connect(userData.token);
+      }
     }
   },
 
@@ -24,6 +31,11 @@ const useAuthStore = create((set) => ({
       isAuthenticated: true,
       isLoading: false
     });
+
+    // Connect to socket after successful login
+    if (userData.token) {
+      socketService.connect(userData.token);
+    }
   },
 
   // Logout action
@@ -34,6 +46,9 @@ const useAuthStore = create((set) => ({
       isAuthenticated: false,
       isLoading: false
     });
+
+    // Disconnect socket on logout
+    socketService.disconnect();
   },
 
   // Set loading state

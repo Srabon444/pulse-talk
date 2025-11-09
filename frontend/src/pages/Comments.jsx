@@ -1,5 +1,6 @@
 import AddComment from '../components/AddComment';
 import CommentList from '../components/CommentList';
+import SocketStatus from '../components/SocketStatus';
 import '../styles/comments.scss';
 
 const Comments = () => {
@@ -9,6 +10,7 @@ const Comments = () => {
 
   return (
     <div className="comments-page">
+      <SocketStatus />
       <div className="comments-container">
         <header className="comments-header">
           <h1 className="comments-title">Community Discussion</h1>
