@@ -28,11 +28,7 @@ function Dashboard() {
       </header>
 
       <main className="dashboard-content">
-        <p>🎉 You are logged in successfully!</p>
-        <p>✅ This is a protected route.</p>
-        <p>👤 User ID: {user?.id}</p>
-        <p>📧 Email: {user?.email}</p>
-        <p>🏷️ Username: {user?.username}</p>
+        <p>You are logged in successfully!</p>
 
         <div className="navigation-links">
           <Link to="/comments" className="nav-link">
