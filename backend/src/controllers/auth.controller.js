@@ -49,7 +49,10 @@ export const login = async (req, res) => {
 
       res.status(200).json({
         success: true,
-        data: result.data.user,
+        data: {
+          user: result.data.user,
+          token: result.data.token
+        },
         message: result.message
       });
     } else {
