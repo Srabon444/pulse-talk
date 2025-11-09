@@ -1,6 +1,12 @@
 import {prisma} from '../config/prisma.connection.js';
 import {cacheService, cacheKeys} from './cache.service.js';
 import logger from '../config/logger.js';
+import {
+  broadcastNewComment,
+  broadcastCommentUpdate,
+  broadcastCommentDelete,
+  broadcastVoteUpdate
+} from './socket.service.js';
 
 // Helper function to build nested replies with depth control
 const buildNestedReplies = (depth = 3) => {
@@ -251,6 +257,9 @@ export const createComment = async (commentData, userId) => {
 
     logger.info(`Comment created successfully, CommentId: ${newComment.id}, AuthorId: ${userId}`);
 
+    // Broadcast new comment/reply to connected clients
+    broadcastNewComment(newComment, parentId);
+
     return {
       success: true,
       data: newComment,
@@ -352,6 +361,10 @@ export const updateComment = async (commentId, updateData) => {
     }
 
     logger.info(`Comment updated successfully: ${commentId}`);
+
+    // Broadcast comment update to connected clients
+    broadcastCommentUpdate(updatedComment);
+
     return {
       success: true,
       data: updatedComment,
@@ -428,6 +441,10 @@ export const deleteComment = async (commentId) => {
     if (comment.parentId) {
       await cacheService.del(cacheKeys.commentReplies(comment.parentId));
     }
+
+    // Broadcast comment deletion to connected clients
+    const isHardDelete = comment._count.replies === 0;
+    broadcastCommentDelete(commentId, isHardDelete);
 
     return {
       success: true,
@@ -518,6 +535,9 @@ export const toggleLike = async (commentId, userId, isLike) => {
     // Clear relevant caches
     await cacheService.del(cacheKeys.commentDetails(commentId));
     await cacheService.delPattern('comments:list:*');
+
+    // Broadcast vote update to connected clients
+    broadcastVoteUpdate(commentId, {...result, voteCounts}, userId);
 
     return {
       success: true,

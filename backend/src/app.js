@@ -16,6 +16,9 @@ import {notFoundHandler, globalErrorHandler} from './middleware/error.middleware
 import {securityHeaders, csrfProtection} from './middleware/security.middleware.js';
 import {sanitizeInput} from './middleware/sanitization.middleware.js';
 
+// Socket service
+import {getConnectedUsersCount, getRoomUsersCount} from './services/socket.service.js';
+
 
 const app = express();
 
@@ -74,6 +77,30 @@ app.get('/health', (req, res) => {
     message: 'Pulse Talk Comment System API is running',
     timestamp: new Date().toISOString()
   });
+});
+
+// Socket status endpoint
+app.get('/api/socket/status', (req, res) => {
+  try {
+    res.status(200).json({
+      success: true,
+      data: {
+        connectedUsers: getConnectedUsersCount(),
+        commentsRoomUsers: getRoomUsersCount('comments'),
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    res.status(200).json({
+      success: true,
+      data: {
+        connectedUsers: 0,
+        commentsRoomUsers: 0,
+        message: 'Socket.io not initialized',
+        timestamp: new Date().toISOString()
+      }
+    });
+  }
 });
 
 // API routes
