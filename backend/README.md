@@ -40,6 +40,8 @@ ALLOWED_ORIGINS="http://localhost:3000,http://localhost:5173"
 ```
 
 ### Installation Steps
+0. *** Create Database and replace the DATABASE_URL with proper username, password and DB name. And run Redis (Docker would be fine)
+
 
 1. Install dependencies:
 ```bash
