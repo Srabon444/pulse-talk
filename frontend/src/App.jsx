@@ -5,6 +5,7 @@ import PrivateRoute from './components/PrivateRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import Comments from './pages/Comments';
 import './styles/dashboard.scss';
 
 function App() {
@@ -34,6 +35,14 @@ function App() {
             element={
               <PrivateRoute>
                 <Dashboard/>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/comments"
+            element={
+              <PrivateRoute>
+                <Comments/>
               </PrivateRoute>
             }
           />

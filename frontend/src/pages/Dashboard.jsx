@@ -1,6 +1,6 @@
 import useAuthStore from '../store/authStore';
 import {authAPI} from '../services/api';
-import {useNavigate} from 'react-router-dom';
+import {useNavigate, Link} from 'react-router-dom';
 import '../styles/dashboard.scss';
 
 function Dashboard() {
@@ -33,6 +33,12 @@ function Dashboard() {
         <p>👤 User ID: {user?.id}</p>
         <p>📧 Email: {user?.email}</p>
         <p>🏷️ Username: {user?.username}</p>
+
+        <div className="navigation-links">
+          <Link to="/comments" className="nav-link">
+            💬 View Comments
+          </Link>
+        </div>
       </main>
     </div>
   );

@@ -65,3 +65,30 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   }
 }
+
+.navigation-links {
+  margin-top: 2rem;
+  text-align: center;
+
+  .nav-link {
+    display: inline-block;
+    padding: 1rem 2rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    text-decoration: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+}
