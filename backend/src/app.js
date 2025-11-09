@@ -31,7 +31,7 @@ app.use(securityHeaders);
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs [Tested thoroughly]
+  max: 1000, // limit each IP to 100 requests per windowMs [Tested thoroughly]
   message: {
     success: false,
     message: 'Too many requests, please try again later.',
