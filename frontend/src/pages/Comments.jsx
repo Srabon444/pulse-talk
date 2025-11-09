@@ -1,3 +1,4 @@
+import Header from '../components/Header';
 import AddComment from '../components/AddComment';
 import CommentList from '../components/CommentList';
 import SocketStatus from '../components/SocketStatus';
@@ -10,6 +11,7 @@ const Comments = () => {
 
   return (
     <div className="comments-page">
+      <Header />
       <SocketStatus />
       <div className="comments-container">
         <header className="comments-header">

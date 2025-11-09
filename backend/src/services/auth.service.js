@@ -44,11 +44,22 @@ export const registerUser = async (userData) => {
       }
     });
 
+    // Generate JWT token for auto-login
+    const tokenPayload = {
+      userId: newUser.id,
+      email: newUser.email
+    };
+
+    const token = generateToken(tokenPayload);
+
     logger.info(`User registered successfully, UserId: ${newUser.id}`);
 
     return {
       success: true,
-      data: newUser,
+      data: {
+        user: newUser,
+        token
+      },
       message: 'User registered successfully'
     };
   } catch (error) {

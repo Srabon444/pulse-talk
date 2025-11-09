@@ -3,6 +3,7 @@
   min-height: 100vh;
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   padding: 2rem 0;
+  padding-top: calc(70px + 2rem); // Account for fixed header + original padding
   width: 100vw;
   box-sizing: border-box;
 }
@@ -730,6 +731,7 @@
 @media (max-width: 768px) {
   .comments-page {
     padding: 1rem 0;
+    padding-top: calc(60px + 1rem); // Account for smaller mobile header
   }
 
   .comments-container {

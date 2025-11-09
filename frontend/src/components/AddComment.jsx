@@ -96,7 +96,7 @@ const AddComment = ({onCommentAdded}) => {
       <div className="add-comment__header">
         <div className="add-comment__user-info">
           <span className="add-comment__username">
-            Commenting as @{user.username}
+            Commenting as @{user?.user?.username}
           </span>
         </div>
       </div>

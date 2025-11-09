@@ -4,6 +4,11 @@ A real-time comment system built with Node.js, Express, Socket.io, Prisma, and P
 
 ![Architecture Image](resources/images/pulse-talk-system-architecture.png)
 
+## Postman Collection
+- Import the collection in the postman to test the APIs.
+
+Link: https://devashraful.postman.co/workspace/Team-Workspace~43fc06c4-3771-4d3b-89a7-43d5ad022126/collection/48432212-e4b28570-acf4-4b80-b8f2-af489b440daf?action=share&creator=48432212&active-environment=48432212-f9105413-1091-4538-bf93-718ee1c052f1
+
 ## Installation & Setup
 
 ### Prerequisites

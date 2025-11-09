@@ -17,7 +17,17 @@ export const register = async (req, res) => {
     const result = await registerUser(validationResult.data);
 
     if (result.success) {
-      res.status(201).json(result);
+      // Set JWT token in cookie for auto-login
+      res.cookie('token', result.data.token, getCookieOptions());
+
+      res.status(201).json({
+        success: true,
+        data: {
+          user: result.data.user,
+          token: result.data.token
+        },
+        message: result.message
+      });
     } else {
       res.status(400).json(result);
     }
