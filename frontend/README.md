@@ -2,6 +2,9 @@
 
 A modern comment system built with React that provides real-time communication features for web applications.
 
+### *** Video Link ***
+[![Watch the video](https://img.youtube.com/vi/hTIrsIy56Pk/0.jpg)](https://www.youtube.com/watch?v=hTIrsIy56Pk)
+
 ## Features
 
 ### Authentication System
